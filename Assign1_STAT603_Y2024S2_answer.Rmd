@@ -1,0 +1,433 @@
+---
+title: "Assignment 1 STAT603 - Answers"
+author: "Thuan Nguyen 23194073"
+subtitle: "4 September 2024"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+\textbf{NOTE:} Write down your solutions / answers into this Rmd file. Knit the file to PDF and submit.
+
+### Total Possible Marks:
+
+90 marks, contributing 25% towards your final grade.
+
+### Due date
+
+23:59hr, 4 September 2024.
+
+### Page limit
+
+Max 20 pages including \\verb\|R\| code, plots, and your answers.
+
+\medskip
+
+\noindent \textbf{Data:}
+
+```{=tex}
+\begin{itemize}
+
+    \item Quarterly unemployed population (thousands)
+    in New Zealand, from Quarter 1, 2001, to Quarter 4, 2022.
+    (Filename: \verb|NZ_Unemployment_Quarterly.xlsx|)
+    
+    \item Quarterly inflation (percent) in New Zealand from
+    Quarter 1, 2001 to Quarter 4, 2022
+    (Filename: \verb|NZ_Inflation_Quarterly.xlsx|)
+    
+    \item Quarterly real national disposable income (Billion NZ dollars) in New Zealand from Quarter 1, 2010 to Quarter 3, 2022
+    (Filename: \verb|NZ_DispIncome_Quarterly.xlsx|)
+
+\end{itemize}
+```
+```{=tex}
+\medskip
+\medskip
+```
+\medskip
+
+### QUESTION 1.
+
+(a) Extract the data from the \\verb\|New South Wales\| state. Aggregate the variable \\verb\|turnover\| (sum over \\verb\|Turnover\|) using \\verb\|summarise()\| and briefly discuss the observed frequencies \textbf{(5 marks)}.
+
+\textcolor{red}{Answer:}
+
+```{r}
+# Write your answers here
+
+library(fpp3)
+# view the original dataset
+view(aus_retail)
+
+nsw_state <- aus_retail %>%
+  filter(State == "New South Wales") %>%
+  summarise(Turnover = sum(Turnover))
+
+print(nsw_state)
+
+nsw_state %>% 
+  autoplot(Turnover)
+```
+
+the data is collected monthly from january 1980 to january 2020. it is low-frequency data (monthly). - the trend is upward. - seasonality: the peaks occurring consistently at the same time of the year, which is December, and the trough occurring in January in the majority of whole period, suggests that the dataset contain strong seasonal component. - the variance in turnover is increasing overtime. \medskip
+
+(b) Use \\verb\|slice()\| or \\verb\|filter()\| to create three training subsets from this data, as follows: excluding the last year of data (first subset), then two (second subset) and three (third subset) years of data \textbf{(6 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+train_1st <- nsw_state %>%
+  filter(Month <= max(Month) - 12)
+
+train_2nd <- nsw_state %>%
+  filter(Month <= max(Month) - 2*12)
+
+train_3rd <- nsw_state %>%
+  filter(Month <= max(Month) - 3*12)
+```
+
+\medskip
+
+(c) Compute one year of forecasts for each training set using (a) the seasonal naive method, and (b) the drift method. Make a plot of the original series with the forecasts from the three sets in each case \textbf{(8 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers heres
+# (a) using seasonal naive method
+
+fc_snaive1 <- train_1st %>%
+  model(SNAIVE(Turnover))%>%
+  forecast(h = "1 year")
+
+  
+fc_snaive2 <- train_2nd %>%
+  model(SNAIVE(Turnover))%>%
+  forecast(h = "1 year")
+
+  
+fc_snaive3 <- train_3rd %>%
+  model(SNAIVE(Turnover))%>%
+  forecast(h = "1 year")
+
+  
+#(b) using drift method
+
+fc_drift1 <- train_1st %>%
+  model(RW(Turnover ~ drift()))%>%
+  forecast(h = "1 year")
+  
+fc_drift2 <- train_2nd %>%
+  model(RW(Turnover ~ drift())) %>%
+  forecast(h = "1 year")
+  
+fc_drift3 <- train_3rd %>%
+  model(RW(Turnover ~ drift()))%>%
+  forecast(h = "1 year")
+
+
+
+# Plot the original series with seasonal naive forecasts
+nsw_state %>% autoplot(Turnover) +
+  autolayer(fc_snaive1, Turnover, series = "SNaive1", PI = FALSE, color = "blue") +
+  autolayer(fc_drift1, Turnover, series = "Drift1", PI = FALSE, color = "red") +
+  autolayer(fc_snaive2, Turnover, series = "SNaive2", PI = FALSE, color = "green") +
+  autolayer(fc_drift2, Turnover, series = "Drift2", PI = FALSE, color = "purple") +
+  autolayer(fc_snaive3, Turnover, series = "SNaive3", PI = FALSE, color = "orange") +
+  autolayer(fc_drift3, Turnover, series = "Drift3", PI = FALSE, color = "brown") +
+  ggtitle("Income Forecasts Using Seasonal Naive and Drift Methods") +
+  scale_color_manual(values = c("blue", "red", "green", "purple", "orange", "brown"))
+```
+
+\medskip
+
+(d) Compare the forecasts from (c) for each TEST data set. Use forecast accuracy functions in \\verb\|R\|. Which method performs best forecasting-wise in this case? \textbf{(8 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+# Calculate accuracy and add a model identifier
+results_snaive1 <- fc_snaive1 %>% accuracy(nsw_state) %>% mutate(.model = "sNaive1")
+results_snaive2 <- fc_snaive2 %>% accuracy(nsw_state) %>% mutate(.model = "sNaive2")
+results_snaive3 <- fc_snaive3 %>% accuracy(nsw_state) %>% mutate(.model = "sNaive3")
+results_drift1 <- fc_drift1 %>% accuracy(nsw_state) %>% mutate(.model = "Drift1")
+results_drift2 <- fc_drift2 %>% accuracy(nsw_state) %>% mutate(.model = "Drift2")
+results_drift3 <- fc_drift3 %>% accuracy(nsw_state) %>% mutate(.model = "Drift3")
+
+# Combine all results into one data frame
+combined_results <- bind_rows(results_snaive1, results_snaive2, results_snaive3,
+                              results_drift1, results_drift2, results_drift3)
+
+# Arrange by MASE
+combined_results %>% arrange(MASE)
+
+```
+
+\medskip
+
+A s we can see, ME value of snaive2 is the closest to zero. Althought the RMSE value is not the lowest but MPE, MAPE, MASE values of snaive2 are the lowest compare to others. Therefore, the seasonal naive model which is tested on training set 2 is observing the best accuracy - In general for 2 method: - for metrics like MAE, MAPE, MASE, these metrics are useful for understanding the average magnitude of errors in general, no penalizing larger errors. From the table above, we can see seanonal naive method shows lower MAE,MAPE, and MASE comapared to the Drift method across all subsets, the drift method shows significantly higher values, indicating that the seasonal method performs much better. - for metrics like RMSE and RMSSE, these metrics also give the sense of the magnitude of errors like those metrics above, but higher penalty for larger errors. from the table, seasonal naive method has lower values than drift method across all the subsets, and the drift method also has very high values, indicating that drift method has the presence of large forecast errors.
+
+-   With the lowest MAE value, the sNaive 2 has the lowest error across all the forecast.
+-   But for the RMSE, the snaive1 has the lowest RMSE, across all the metrics, especially compare to snaive2(the best performance), indicating that snaive2 might be contains some infrequent large errors, more than snaive1.
+
+Therefore, snaive2 perform the best forecasting-wise.
+
+(e) Do the residuals from the best method resemble white noise? Briefly discuss your answer. \textbf{(3 marks)}
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+train_2nd %>% model(SNAIVE(Turnover)) %>% gg_tsresiduals()
+```
+
+the residual generated from training set 2 is not resemble white noise: - from innovation residuals graph,there is significant changes in variance and the variance is not constant - from acf graph, the majority of the bars lie outside of the blue dashed line, so the residuals is correlated. - from the histogram, residuals aren't normally distributed around zero
+
+\medskip
+
+### QUESTION 2
+
+(a) Import the data into \\verb\|R\| and convert the data into a \\verb\|tsibble\|. Then, plot the series and discuss the main features, including variability and patterns \textbf{(5 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+
+# read data files and correct format
+
+
+nz_unemp <- readxl::read_excel("C:/Users/Admin1/OneDrive - AUT University/Forcasting/Assignment 1/NZ_Unemployment_Quarterly.xlsx", skip = 1)
+colnames(nz_unemp)<- c("Quarter", "Population")
+
+# convert data into tsibble object(time series)
+ts_unemp <- nz_unemp %>%
+  select(Quarter, Population)%>%
+  mutate(Quarter = yearquarter(Quarter))%>%
+  as_tsibble(index = Quarter)
+view(ts_unemp)
+```
+
+\medskip
+
+(b) Decide whether or not a transformation is necessary to stabilize the variance. \textbf{Explain} your answer. If your decision is \\verb\|yes\|, then apply the transformation and describe its effect \textbf{(6 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+
+#plot the original plot
+ts_unemp %>% autoplot()
+
+ts_unemp %>% 
+  features(Population, features = guerrero)
+  
+#ts_unemp %>% autoplot(box_cox(Population, 1.136128))
+#ts_unemp %>% autoplot(log(Population))
+
+```
+
+according to the original plot of the dataset, from approxiamtely\
+Because the lambda guerrero value is 1,136128, which is nearly 1. Therefore, the transformation is unnecessary \medskip
+
+(c) Create a training data set by holding the last two years of the series. This means that the TEST data set contains the last two years of data. With the trining data set, compute two years of forecasts using the (a) mean, (b) naive, (c) seasonal naive, and (d) drift methods \textbf{(8 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+train_unemp <- ts_unemp %>% slice(1:79)
+
+# compute forecast
+fit <- train_unemp %>%
+  model(
+    naive = NAIVE(Population),
+    snaive = SNAIVE(Population),
+    drift = RW(Population ~ drift()),
+    mean = MEAN(Population)
+  )
+
+fc_unemp <- fit %>% forecast(h="2 years")
+```
+
+\medskip
+
+(d) Now, compute the RMSE and the MAPE for your forecasts from (d). Which method performs best based on these measures? Explain your answer \textbf{(6 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+fc_unemp %>%
+  accuracy(ts_unemp) %>%
+  group_by(.model) %>%
+  summarise(MAPE = mean(MAPE), RMSE = mean(RMSE)) %>%
+  ungroup() %>%
+  arrange(MAPE, RMSE)
+```
+
+The mean method provided the most accurate forecast in 2 years period because it show the smallest accuracy measures (MAPE = 19.9085, and RMSE = 21.54504). the lowest MAPE indicates that the errors relative to the actual values were the smallest among 4 method, and the lowest RMSE confirms that these errors were consistently small across the forecast horizon. That why the mean model could capture effectively. \medskip
+
+### QUESTION 3
+
+(a) Fit a regression model to the quarterly unemployment data with a linear trend and seasonal dummies. Discuss the results, specifically, the coefficients of the \\verb\|trend\| and the \\verb\|seasonal dummies\|, as well as the $R^2$ \textbf{(8 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+fit_unemp <- ts_unemp %>%
+  model(TSLM(Population ~ trend() + season()))
+
+report((fit_unemp))
+
+fit_unemp %>% gg_tsresiduals()
+```
+
+-   The trend variable has a coefficient of 0.37 saying that the unemployment population is increasing by 0.37 every quarter on average over the series.The p-value (7.43e-05) is very low, suggesting that the trend is a significant predictor in the model .
+
+-   the intercept is significant positive. The extremely low p-value (\< 2e-16) indicates that this coefficient is statistically significant.
+
+-   Quarter 2 is 12.49 less than quarter 1. Quarter 3 is 12.28 less than quarter 1 and Quarter 4 is 10.9 less than quarter 1 in whatever units the data comes in.P-value of those 3 seasons are not statistically significant at the 0.05 level, quarter 2 and quarter 3 are borderline significant(0.0558 for quarter 2 and 0.0599 for quarter 3), quarter 4 is 0.0956 which might not a statistically significant predictor. therefore, seasonal variations are potential but not significantly affect the model.
+
+-   the adjusted R\^2 is quite low (0.1716), indicates that approximately 17.16% of the variability in the dependent variable is explained by the independent variables in the regression model, after adjusting for the number of predictors. Though there is a significant portion of the variability remains unexplained, doesn't mean the model is not good, but we can do it better to improve the model.
+
+Next, analyze the residuals to confirm the trustworthy of the statistic report above.
+
+from the residuals, there are several violations to the model assumption. Residuals are auto-correlated, not normally distributed. In detail: from innovation residuals plot, the residual appear to have some cyclical patterns,downward trend from 2000 to 2005, then increased around the years 2005-2010 and then again in a downward trend starting from 2010 There are several spikes in the ACF plot outside the confidence interval at early lags, the autocorrelation plot shows the highest significant lag at spike 1, decreasing in those following lags.
+
+In conclusion, we can say that the residuals is biased, so the statistic that computed from the model is not trustworthy and the model isn't good for forecasting.
+
+\medskip
+
+(b) Plot the \\verb\|quarterly unemployment data\|, along with the \\verb\|quarterly inflation\| series, and the \\verb\|real national disposiable income\| data. Conduct a correlation analysis. Discuss the results \textbf{(6 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+
+# 
+nz_infl <- readxl::read_excel("C:/Users/Admin1/OneDrive - AUT University/Forcasting/Assignment 1/NZ_Inflation_Quarterly.xlsx", skip  = 1)
+colnames(nz_infl)<- c("Quarter", "Inflation_Percent")
+
+# convert data into tsibble object(time series)
+ts_infl <- nz_infl %>%
+  select(Quarter, Inflation_Percent)%>%
+  mutate(Quarter = yearquarter(Quarter))%>%
+  as_tsibble(index = Quarter)
+
+
+
+nz_income <- readxl::read_excel("C:/Users/Admin1/OneDrive - AUT University/Forcasting/Assignment 1/NZ_DispIncome_Quarterly.xlsx", skip = 1)
+colnames(nz_income)<- c("Quarter", "Income_Thousand")
+
+# convert data into tsibble object(time series)
+ts_income <- nz_income %>%
+  select(Quarter, Income_Thousand)%>%
+  mutate(Quarter = yearquarter(Quarter))%>%
+  as_tsibble(index = Quarter)
+
+
+merged_data <- merge(merge(ts_unemp, ts_infl, by = "Quarter"), ts_income, by = "Quarter")%>%
+  as_tsibble(index = Quarter)
+
+merged_data %>%
+  gather("key", "Population",Income_Thousand, Inflation_Percent) %>%
+  autoplot(.vars = Population) +
+  facet_grid(vars(key), scales = "free_y")
+
+
+
+merged_data |> GGally::ggpairs(columns = 2:4)
+merged_data
+
+
+```
+
+-   Unemployed Population and Inflation(percent): The correlation coefficient is -0.350, which is statistically significant as indicated by(\*\*\*). This suggests a moderate negative correlation between population and inflation.
+-   Unemployed Population and Income(thousand dollars): The correlation coefficient is 0.277, which is also statistically significant shown by (\*\*), but weak positive correlation between unemployed population and income.
+-   inflation(percent) and income(thousand): The correlation coefficient is 0.148, which is not statistically significant. This suggests a very weak positive correlation between inflation and income.
+
+The scatter plots of unemployed population and inflation, unemployed population and income, income and inflation all demonstrate no clear linear relationship, lack of trend suggests that 2 variables weakly correlated, support statement above. \medskip
+
+(c) Fit a regression model to the \\verb\|quarterly unemployment\| data using the \\verb\|quarterly inflation\| and the \\verb\|national disposable income\| series as explanatory variables. Discuss the coefficients of both explanatories. Based on your answer to (b), are these effects reasonable? Explain briefly your answer \textbf{(6 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+myfit <- merged_data %>% 
+  model(reg1 = TSLM(Population ~ Inflation_Percent + Income_Thousand))
+
+report(myfit)
+
+myfit %>% gg_tsresiduals()
+
+glance(myfit)%>% select(AICc)
+```
+
+-   the coefficient for Inflation(percent) is -16.1476, the negative sign indicates an inverse relationship between inflation and unemployed population. This means that for each 1% increase in inflation, the unemployed population is expected to decrease by approximately 16.15 units(thousand people), with all others variables constant. The t-value of -4.166 indicates that the coefficient is significantly different from 0, and the p-value is 7.41e-05 which is below 0.001 confirms that the relationship between inflation and unemployed population is statistically significant.
+-   the coefficient for Income(thousand) is 0.7643, the positive sign saying that higher income levels are associated with an increase in the unemployed population. in this case, for every increase of 1 units(thousand dollars) in income, the unemployed is expected to increase by 0.7643 units(thousand people), holding all other variables constant. the t-value is 3.499 shows that the coefficient is significantly different from zero, and the p-value(0.000746) indicates that this relationship is also statistically significant.
+
+In conclusion, both inflation(percent) and income(thousand dollars) are statistically significant predictors of the unemployed population(thousand people). However, even though the overall model is statistically significant, an adjusted R-squared is 0.2151, saying that there is still a large propotion of variance not explained by the model, suggesting that we can still improve the model
+
+It is reasonable why both inflation(percent) and income(thousand dollars) are statistically significant predictors of the unemployed population(thousand people) because from the (b), the graph visualizing the correlation between all variables: - firstly, the correlation coefficients shown that those 2 predictors have some, but not strong, linear relationships with unemployed population. However, the asterisks shown that those 2 predictors are statistically significant to the unemployed population. - secondly, we can see that there is very weak correlation between 2 predictors variables(match the assumption of no multicollinearity ),so that it will not affect each others during performing model, which can be understandable why the model in (c) can conduct good coefficients for 2 predictors variables.
+
+\medskip
+
+(d) Do we need to include the linear trend and seasonal dummies in the regression model in (c)? Perform an appropriate relevant analysis and discuss \textbf{(5 marks)}.
+
+\textcolor{red}{Answer:}
+
+\medskip
+
+```{r}
+# Write your answers here
+
+
+myfit2 <- merged_data %>% 
+  model(reg2 = TSLM(Population ~ Inflation_Percent + Income_Thousand + trend() + season()))
+
+report(myfit2)
+myfit2 %>% gg_tsresiduals()
+glance(myfit2) %>% select(AICc)
+```
+
+\medskip
+
+-   observed from the residuals, there is no trend in this, the variance is not constant, and there is a extreme value at approximately 2020 Q1, suggesting that there is an outlier at that point. lag 1 to lag 6 is out of the blue line, saying that there is autocorrelation from lag 1 to lag 6, and at lag 18.the histogram is left-skewed and the variation of the histogram also say that there is an outlier.
+-   After conducting the model with trend and seasonal dummies, the adjusted R\^2 is improved significantly(from 0.2151 to 0.5769), and the p-value of trend component is 3.46e-12, which is statistically significant below 0.001, also does the season()year2(0.00075)
+-   lastly, the AICc of model with trend and seasonal dummies is 490.1639, which is lower than the model without them(539.4396). In conclusion, include trend and seasonal dummies might improve the model generally.
+
+------------------------------------------------------------------------
+
+END OF ASSINGMENT 1
